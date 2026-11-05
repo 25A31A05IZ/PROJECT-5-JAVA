@@ -1,0 +1,437 @@
+import java.util.*;
+import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
+
+public class Main {
+
+    static Scanner sc = new Scanner(System.in);
+
+    static Map<String, String> users = new HashMap<>();
+    static Map<String, ArrayList<Account>> customerAccounts = new HashMap<>();
+    static ArrayList<Account> allAccounts = new ArrayList<>();
+
+    static int accountCounter = 1001;
+
+    static final String ADMIN_USER = "admin";
+    static final String ADMIN_PASS = "admin123";
+
+    static class Account {
+        int accountNumber;
+        String username;
+        String holderName;
+        String accountType;
+        BigDecimal balance;
+        ArrayList<String> transactions = new ArrayList<>();
+
+        Account(int number, String user, String name,
+                String type, BigDecimal amount) {
+            accountNumber = number;
+            username = user;
+            holderName = name;
+            accountType = type;
+            balance = amount;
+
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                transactions.add("Initial Deposit: Rs. " + amount);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+
+        while (true) {
+            System.out.println("\n================================");
+            System.out.println("     BANK MANAGEMENT SYSTEM");
+            System.out.println("================================");
+            System.out.println("1. Customer");
+            System.out.println("2. Admin");
+            System.out.println("3. Exit");
+            System.out.print("Enter choice: ");
+
+            int choice = readInt();
+
+            switch (choice) {
+                case 1:
+                    customerMenu();
+                    break;
+                case 2:
+                    adminLogin();
+                    break;
+                case 3:
+                    System.out.println("Thank you for using our bank!");
+                    return;
+                default:
+                    System.out.println("Invalid choice.");
+            }
+        }
+    }
+
+    static int readInt() {
+        try {
+            return Integer.parseInt(sc.nextLine().trim());
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    static BigDecimal readAmount() {
+        try {
+            return new BigDecimal(sc.nextLine().trim());
+        } catch (Exception e) {
+            return BigDecimal.valueOf(-1);
+        }
+    }
+
+    static String hashPassword(String password) {
+        try {
+            MessageDigest md =
+                MessageDigest.getInstance("SHA-256");
+
+            byte[] bytes = md.digest(
+                password.getBytes(StandardCharsets.UTF_8)
+            );
+
+            StringBuilder result = new StringBuilder();
+
+            for (byte b : bytes) {
+                result.append(String.format("%02x", b));
+            }
+
+            return result.toString();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // CUSTOMER MENU
+
+    static void customerMenu() {
+        while (true) {
+            System.out.println("\n--- CUSTOMER MENU ---");
+            System.out.println("1. Register");
+            System.out.println("2. Login");
+            System.out.println("3. Back");
+            System.out.print("Enter choice: ");
+
+            int choice = readInt();
+
+            switch (choice) {
+                case 1:
+                    register();
+                    break;
+                case 2:
+                    String username = login();
+                    if (username != null) {
+                        userAccountMenu(username);
+                    }
+                    break;
+                case 3:
+                    return;
+                default:
+                    System.out.println("Invalid choice.");
+            }
+        }
+    }
+
+    static void register() {
+        System.out.print("Create username: ");
+        String username = sc.nextLine().trim();
+
+        System.out.print("Create password: ");
+        String password = sc.nextLine();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            System.out.println("Fields cannot be empty.");
+            return;
+        }
+
+        if (users.containsKey(username)) {
+            System.out.println("Username already exists.");
+            return;
+        }
+
+        users.put(username, hashPassword(password));
+        customerAccounts.put(username, new ArrayList<>());
+
+        System.out.println("Registration successful!");
+    }
+
+    static String login() {
+        System.out.print("Username: ");
+        String username = sc.nextLine().trim();
+
+        System.out.print("Password: ");
+        String password = sc.nextLine();
+
+        if (users.containsKey(username) &&
+            users.get(username).equals(hashPassword(password))) {
+
+            System.out.println("Login successful!");
+            return username;
+        }
+
+        System.out.println("Invalid username or password.");
+        return null;
+    }
+
+    // CUSTOMER ACCOUNT MENU
+
+    static void userAccountMenu(String username) {
+
+        while (true) {
+            System.out.println("\n--- CUSTOMER DASHBOARD ---");
+            System.out.println("1. Create Account");
+            System.out.println("2. Deposit");
+            System.out.println("3. Withdraw");
+            System.out.println("4. Check Balance");
+            System.out.println("5. View Transactions");
+            System.out.println("6. Logout");
+            System.out.print("Enter choice: ");
+
+            int choice = readInt();
+
+            switch (choice) {
+                case 1:
+                    createAccount(username);
+                    break;
+                case 2:
+                    deposit(username);
+                    break;
+                case 3:
+                    withdraw(username);
+                    break;
+                case 4:
+                    checkBalance(username);
+                    break;
+                case 5:
+                    viewTransactions(username);
+                    break;
+                case 6:
+                    System.out.println("Logged out.");
+                    return;
+                default:
+                    System.out.println("Invalid choice.");
+            }
+        }
+    }
+
+    static void createAccount(String username) {
+
+        System.out.print("Account holder name: ");
+        String name = sc.nextLine().trim();
+
+        System.out.print("Account type (Savings/Current): ");
+        String type = sc.nextLine().trim();
+
+        if (name.isEmpty() ||
+            (!type.equalsIgnoreCase("Savings") &&
+             !type.equalsIgnoreCase("Current"))) {
+            System.out.println("Invalid account details.");
+            return;
+        }
+
+        System.out.print("Initial deposit: ");
+        BigDecimal amount = readAmount();
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            System.out.println("Invalid amount.");
+            return;
+        }
+
+        Account account = new Account(
+            accountCounter++, username, name, type, amount
+        );
+
+        allAccounts.add(account);
+        customerAccounts.get(username).add(account);
+
+        System.out.println("\nAccount created successfully!");
+        System.out.println("Account Number: " + account.accountNumber);
+        System.out.println("Account Holder: " + name);
+        System.out.println("Account Type: " + type);
+        System.out.println("Balance: Rs. " + amount);
+    }
+
+    static Account findAccount(String username) {
+
+        System.out.print("Enter account number: ");
+        int number = readInt();
+
+        for (Account account : customerAccounts.get(username)) {
+            if (account.accountNumber == number) {
+                return account;
+            }
+        }
+
+        System.out.println("Account not found.");
+        return null;
+    }
+
+    static void deposit(String username) {
+
+        Account account = findAccount(username);
+        if (account == null) return;
+
+        System.out.print("Enter deposit amount: ");
+        BigDecimal amount = readAmount();
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            System.out.println("Invalid amount.");
+            return;
+        }
+
+        account.balance = account.balance.add(amount);
+
+        account.transactions.add("Deposit: Rs. " + amount);
+
+        System.out.println("Deposit successful!");
+        System.out.println("New Balance: Rs. " + account.balance);
+    }
+
+    static void withdraw(String username) {
+
+        Account account = findAccount(username);
+        if (account == null) return;
+
+        System.out.print("Enter withdrawal amount: ");
+        BigDecimal amount = readAmount();
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            System.out.println("Invalid amount.");
+            return;
+        }
+
+        if (account.balance.compareTo(amount) < 0) {
+            System.out.println("Insufficient balance.");
+            return;
+        }
+
+        account.balance = account.balance.subtract(amount);
+
+        account.transactions.add("Withdrawal: Rs. " + amount);
+
+        System.out.println("Withdrawal successful!");
+        System.out.println("Remaining Balance: Rs. " + account.balance);
+    }
+
+    static void checkBalance(String username) {
+
+        Account account = findAccount(username);
+        if (account == null) return;
+
+        System.out.println("Account Holder: " + account.holderName);
+        System.out.println("Account Number: " + account.accountNumber);
+        System.out.println("Current Balance: Rs. " + account.balance);
+    }
+
+    static void viewTransactions(String username) {
+
+        Account account = findAccount(username);
+        if (account == null) return;
+
+        System.out.println("\n--- TRANSACTION HISTORY ---");
+
+        if (account.transactions.isEmpty()) {
+            System.out.println("No transactions found.");
+            return;
+        }
+
+        for (String transaction : account.transactions) {
+            System.out.println(transaction);
+        }
+    }
+
+    // ADMIN MENU
+
+    static void adminLogin() {
+
+        System.out.print("Admin username: ");
+        String username = sc.nextLine();
+
+        System.out.print("Admin password: ");
+        String password = sc.nextLine();
+
+        if (username.equals(ADMIN_USER) &&
+            password.equals(ADMIN_PASS)) {
+
+            System.out.println("Admin login successful!");
+            adminDashboard();
+
+        } else {
+            System.out.println("Invalid admin login.");
+        }
+    }
+
+    static void adminDashboard() {
+
+        while (true) {
+            System.out.println("\n--- ADMIN DASHBOARD ---");
+            System.out.println("1. Search Account");
+            System.out.println("2. View All Accounts");
+            System.out.println("3. Logout");
+            System.out.print("Enter choice: ");
+
+            int choice = readInt();
+
+            switch (choice) {
+                case 1:
+                    searchAccount();
+                    break;
+                case 2:
+                    viewAllAccounts();
+                    break;
+                case 3:
+                    System.out.println("Admin logged out.");
+                    return;
+                default:
+                    System.out.println("Invalid choice.");
+            }
+        }
+    }
+
+    static void searchAccount() {
+
+        System.out.print("Enter account number: ");
+        int number = readInt();
+
+        for (Account account : allAccounts) {
+
+            if (account.accountNumber == number) {
+
+                System.out.println("\n--- ACCOUNT DETAILS ---");
+                System.out.println("Account Number: " + account.accountNumber);
+                System.out.println("Holder Name: " + account.holderName);
+                System.out.println("Username: " + account.username);
+                System.out.println("Account Type: " + account.accountType);
+                System.out.println("Balance: Rs. " + account.balance);
+
+                return;
+            }
+        }
+
+        System.out.println("Account not found.");
+    }
+
+    static void viewAllAccounts() {
+
+        System.out.println("\n--- ALL CUSTOMER ACCOUNTS ---");
+
+        if (allAccounts.isEmpty()) {
+            System.out.println("No accounts available.");
+            return;
+        }
+
+        for (Account account : allAccounts) {
+
+            System.out.println(
+                "Account: " + account.accountNumber +
+                " | Name: " + account.holderName +
+                " | Username: " + account.username +
+                " | Type: " + account.accountType +
+                " | Balance: Rs. " + account.balance
+            );
+        }
+    }
+}
